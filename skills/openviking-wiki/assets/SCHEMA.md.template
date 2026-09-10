@@ -1,0 +1,33 @@
+# Wiki Schema
+
+## Wiki location
+
+- Storage: OpenViking
+- Root: `<selected at operation time>`
+
+## Page types
+
+- `source` in `sources/`
+- `entity` in `entities/`
+- `concept` in `concepts/`
+- `synthesis` in `synthesis/`
+
+## Frontmatter
+
+Every ordinary page requires `type`, `title`, `tags`, `created`, and `updated`.
+Source pages also use `authors`, `url` when applicable, `raw`, and `ingested`.
+Non-source pages use `sources` containing bare source-page slugs.
+
+Repository inventory anchors use `kind: repo-entity` and require `type`, `name`, `origin`, `web_url`,
+and `description`. Legacy repository pages without the marker remain ordinary entities.
+
+## Size and links
+
+- Soft cap: 400 lines.
+- Hard cap: 800 lines.
+- Frontmatter source references are bare slugs; body cross-references use `[[wikilinks]]`.
+
+## Log
+
+Entries use `## [YYYY-MM-DD] <operation> | <description>` with one or two sentences and one primary
+artifact link. Define the accepted operation keywords in `log.md`.

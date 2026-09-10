@@ -1,0 +1,15 @@
+# Wiki Log
+
+Append-only human-readable index of completed wiki operations.
+
+Operation keywords:
+
+- `ingest` — processed a new source.
+- `ingest-rerun` — audited an existing source record.
+- `update` — changed existing knowledge without a new source.
+- `correction` — corrected a sourced factual claim.
+- `lint` — completed a health check.
+- `shard` — reorganized the index.
+- `query` — filed a query answer as synthesis.
+
+---

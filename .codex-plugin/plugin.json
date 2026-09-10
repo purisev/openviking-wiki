@@ -1,0 +1,25 @@
+{
+  "name": "openviking-wiki",
+  "version": "0.1.0+codex.20260910063325",
+  "description": "Maintain an LLM-authored Markdown wiki in OpenViking storage.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "OpenViking Wiki",
+    "shortDescription": "Maintain a structured wiki in OpenViking.",
+    "longDescription": "Lets Codex author, query, validate, and recover a Markdown LLM Wiki stored under an explicitly selected OpenViking resource root.",
+    "developerName": "Local developer",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Add this source to my private OpenViking wiki.",
+      "What does my OpenViking wiki say about this?",
+      "Validate my OpenViking wiki structure."
+    ]
+  }
+}
