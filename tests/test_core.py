@@ -480,12 +480,13 @@ class PackagingTests(unittest.TestCase):
             self.assertIn("openviking-wiki", text)
             self.assertNotIn("mcp__openviking", text)
 
-    def test_claude_marketplace_installs_the_plugin_from_the_repository_root(self):
-        marketplace = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())
+    def test_claude_manifest_depends_on_the_plugin_that_supplies_the_tools(self):
         claude = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())
-        entries = [p for p in marketplace["plugins"] if p["name"] == claude["name"]]
-        self.assertEqual(len(entries), 1)
-        self.assertEqual(entries[0]["source"], "./")
+        self.assertEqual(claude["dependencies"], ["openviking-memory"])
+
+    def test_the_repository_is_not_a_marketplace_of_its_own(self):
+        # Published through purisev/agent-plugins, where the dependency resolves.
+        self.assertFalse((ROOT / ".claude-plugin/marketplace.json").exists())
 
     def test_no_bundled_mcp_or_hooks(self):
         self.assertFalse((ROOT / ".mcp.json").exists())

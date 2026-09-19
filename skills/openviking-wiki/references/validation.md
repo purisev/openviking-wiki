@@ -4,8 +4,12 @@ Use `scripts/wiki_validate.py` against a local synthetic/exported snapshot when 
 needed. The script is read-only and accepts no `viking://` URI. An agent can perform the equivalent
 checks on pages read through MCP without persisting private bodies.
 
-The helper requires PyYAML 6.0.3. Run it through a PEP 723-capable runner or install the pinned
-`requirements-dev.txt` dependency in an isolated environment. It rejects malformed YAML and duplicate
+The helpers require Python 3 and PyYAML 6.0.3, declared in each script's PEP 723 header. Prefer
+`uv run scripts/wiki_validate.py ...`, which resolves the pinned dependency by itself. Without `uv`,
+`python3 -c "import yaml"` shows whether plain `python3 scripts/wiki_validate.py ...` can run. When
+neither works, say which tool is missing and offer to install `uv` with the user's consent; do not
+install anything unasked. The MCP-based checks described above need no local tooling and remain
+available meanwhile. It rejects malformed YAML and duplicate
 mapping keys. The default machine policy implements the four standard page types; if `SCHEMA.md`
 defines custom types, pass an explicit reviewed JSON policy with `--policy` rather than assuming prose
 schema changes can be inferred safely by a deterministic script.
