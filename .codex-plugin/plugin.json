@@ -1,6 +1,6 @@
 {
-  "name": "openviking-wiki",
-  "version": "0.2.0",
+  "name": "ov-wiki",
+  "version": "0.3.0",
   "description": "Maintain an LLM-authored Markdown wiki in OpenViking storage.",
   "author": {
     "name": "purisev",

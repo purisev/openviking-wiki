@@ -23,7 +23,7 @@ revision is compatible. Before installing, resolve and record the selected relea
 commit and inspect its manifests and instructions. Do not rely on historical commit
 links after repository history has been rewritten.
 
-The full workflow lives in `skills/openviking-wiki/SKILL.md` and its relative references
+The full workflow lives in `skills/ov-wiki/SKILL.md` and its relative references
 in the wiki repository. Read the installed revision and the selected knowledge base's
 `SCHEMA.md`; do not duplicate the full schema in this onboarding guide.
 
@@ -33,7 +33,7 @@ in the wiki repository. Read the installed revision and the selected knowledge b
    and the available OpenViking connector to avoid duplicate capture hooks or MCP servers.
 2. When installation is authorized, obtain the wiki repository at the selected revision.
    It contains `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and the shared
-   `skills/openviking-wiki/` directory with references, templates, and Python helpers.
+   `skills/ov-wiki/` directory with references, templates, and Python helpers.
    Keep the complete skill directory, not just SKILL.md. Other agents can load that
    directory through their own skill mechanism and use an existing OpenViking connector.
 3. Use the client's supported local plugin or skill installation workflow. The baseline

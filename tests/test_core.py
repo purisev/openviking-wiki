@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = ROOT / "skills" / "openviking-wiki" / "scripts"
+SCRIPTS = ROOT / "skills" / "ov-wiki" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 
@@ -229,7 +229,7 @@ class ValidatorTests(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_actual_control_templates_initialize_cleanly(self):
-        templates = ROOT / "skills/openviking-wiki/assets"
+        templates = ROOT / "skills/ov-wiki/assets"
         fresh = self.tmp / "fresh"
         fresh.mkdir()
         for source, destination in (
@@ -243,7 +243,7 @@ class ValidatorTests(unittest.TestCase):
         self.assertEqual(report["errors"], 0, report["findings"])
 
     def test_page_template_can_form_a_valid_page(self):
-        template = (ROOT / "skills/openviking-wiki/assets/page.md.template").read_text()
+        template = (ROOT / "skills/ov-wiki/assets/page.md.template").read_text()
         rendered = (
             template.replace("<source|entity|concept|synthesis>", "concept")
             .replace('title: ""', 'title: "Rendered concept"')
@@ -420,7 +420,7 @@ class PlannerTests(unittest.TestCase):
         empty.mkdir()
         desired = base / "templates"
         desired.mkdir()
-        templates = ROOT / "skills/openviking-wiki/assets"
+        templates = ROOT / "skills/ov-wiki/assets"
         for source, destination in (
             ("SCHEMA.md.template", "SCHEMA.md"),
             ("index.md.template", "index.md"),
@@ -465,19 +465,19 @@ class PackagingTests(unittest.TestCase):
     def test_codex_and_claude_manifests_share_the_same_skill(self):
         codex = json.loads((ROOT / ".codex-plugin/plugin.json").read_text())
         claude = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())
-        self.assertEqual(codex["name"], "openviking-wiki")
+        self.assertEqual(codex["name"], "ov-wiki")
         self.assertEqual(claude["name"], codex["name"])
         self.assertEqual(codex["version"], claude["version"])
         self.assertEqual(codex["skills"], "./skills/")
         self.assertEqual(claude["skills"], "./skills/")
-        self.assertTrue((ROOT / "skills/openviking-wiki/SKILL.md").is_file())
+        self.assertTrue((ROOT / "skills/ov-wiki/SKILL.md").is_file())
 
     def test_claude_commands_are_thin_and_do_not_define_transport(self):
         commands = sorted((ROOT / "commands").glob("*.md"))
         self.assertGreaterEqual(len(commands), 5)
         for command in commands:
             text = command.read_text()
-            self.assertIn("openviking-wiki", text)
+            self.assertIn("`ov-wiki` skill", text)
             self.assertNotIn("mcp__openviking", text)
 
     def test_claude_manifest_depends_on_the_plugin_that_supplies_the_tools(self):

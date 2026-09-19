@@ -1,5 +1,5 @@
 ---
-name: openviking-wiki
+name: ov-wiki
 description: Build, query, validate, and maintain an LLM-authored Markdown wiki stored in OpenViking. Use when the user refers to their OpenViking wiki, asks to ingest knowledge into it, query it, lint it, initialize it, or recover an interrupted wiki update. Do not use for ordinary OpenViking memories or bulk resource import.
 ---
 
