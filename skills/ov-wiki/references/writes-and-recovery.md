@@ -2,7 +2,8 @@
 
 ## Before writing
 
-Build the complete change set for exactly one root and validate final bodies. A mixed-scope request
+Build the complete change set for exactly one root and validate final bodies; `validation.md` shows
+how to validate only the changed pages against a listing of the root. A mixed-scope request
 produces independent plans. Record an operation ID, selected root,
 relative path, base SHA-256 (or `null` for creates), intended SHA-256, mode, and phase. Re-read current
 targets and stop if a base hash changed. This detects some stale plans but is not compare-and-swap.

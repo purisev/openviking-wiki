@@ -67,10 +67,55 @@ def parse_frontmatter(text):
     return data, text[match.end() :]
 
 
+def link_key(target):
+    """The page a wikilink names: its text without a heading anchor or a `.md` suffix."""
+    key = target.split("#", 1)[0].strip()
+    return key[:-3] if key.endswith(".md") else key
+
+
 def links(text):
     without_fences = FENCE_RE.sub("", text)
     without_code = INLINE_CODE_RE.sub("", without_fences)
-    return [m.group(1).strip() for m in LINK_RE.finditer(without_code)]
+    keys = (link_key(m.group(1)) for m in LINK_RE.finditer(without_code))
+    # An anchor-only link points into the page that holds it.
+    return [key for key in keys if key]
+
+
+def resolve(key, rel_by_slug, rels):
+    """Relative path of the page a link key names, or None.
+
+    A directory prefix is a constraint, not decoration: `sources/foo` resolves only
+    if that exact path exists, so it can never bind to `entities/foo`.
+    """
+    if "/" in key:
+        rel = f"{key}.md"
+        return rel if rel in rels else None
+    return rel_by_slug.get(key)
+
+
+def read_listing(path, root_uri=None):
+    """Relative Markdown paths of a whole wiki root, one per line.
+
+    Accepts bare relative paths, full URIs and the `[file] <uri>` lines of the
+    OpenViking list tool; `root_uri` is the prefix to strip from URIs.
+    """
+    prefix = root_uri.rstrip("/") + "/" if root_uri else None
+    rels = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        entry = line.strip()
+        if entry.startswith("[dir]"):
+            continue
+        if entry.startswith("[file]"):
+            entry = entry[len("[file]") :].strip()
+        if prefix and entry.startswith(prefix):
+            entry = entry[len(prefix) :]
+        if "://" in entry:
+            raise ValueError(f"listing entry is outside the root: {entry}")
+        if entry.startswith("./"):
+            entry = entry[2:]
+        if entry.endswith(".md"):
+            rels.add(entry)
+    return rels
 
 
 def finding(level, code, path, message, **extra):
@@ -114,16 +159,24 @@ def inventory(root, findings):
     return result
 
 
-def validate(root: Path, scope="private", policy_path=None):
+def validate(root: Path, scope="private", policy_path=None, listing=None):
+    """Validate a snapshot.
+
+    With `listing` (every Markdown path of the wiki root) the snapshot may hold only
+    the pages being changed: links and references resolve against the listing, and
+    the checks that need every page body are skipped and named in the report.
+    """
     findings = []
     pages = []
     inbound = defaultdict(list)
     docs = {}
+    partial = listing is not None
+    listed = set(listing or ())
     if not root.is_dir() or root.is_symlink():
         raise ValueError(f"snapshot is not a real directory: {root}")
     policy = load_policy(policy_path)
     for control in sorted(CONTROL):
-        if not (root / control).is_file():
+        if not (root / control).is_file() and control not in listed:
             findings.append(
                 finding(
                     "error",
@@ -140,8 +193,6 @@ def validate(root: Path, scope="private", policy_path=None):
             findings.append(finding("error", "unreadable", rel, str(exc)))
             continue
         docs[rel] = text
-        for target in links(text):
-            inbound[target].append(rel)
         if scope == "shared" and (
             "viking://user/" in text or "viking://~/" in text
         ):
@@ -384,6 +435,14 @@ def validate(root: Path, scope="private", policy_path=None):
     by_slug = defaultdict(list)
     for page in pages:
         by_slug[page["slug"]].append(page)
+    type_by_dir = {directory: name for name, directory in policy["types"].items()}
+    for rel in sorted(listed - set(docs)):
+        if rel in CONTROL or rel.startswith("indexes/"):
+            continue
+        directory = rel.split("/", 1)[0] if "/" in rel else ""
+        by_slug[Path(rel).stem].append(
+            {"rel": rel, "slug": Path(rel).stem, "type": type_by_dir.get(directory)}
+        )
     for slug, matches in sorted(by_slug.items()):
         if len(matches) > 1:
             findings.append(
@@ -396,14 +455,17 @@ def validate(root: Path, scope="private", policy_path=None):
                     paths=[p["rel"] for p in matches],
                 )
             )
-    known = set(by_slug)
-    known_control_targets = known | {
-        rel[:-3] for rel in docs if rel.startswith("indexes/") and rel.endswith(".md")
-    }
+    rels = set(docs) | listed
+    rel_by_slug = {slug: matches[0]["rel"] for slug, matches in by_slug.items()}
+    for rel, text in docs.items():
+        for target in links(text):
+            resolved = resolve(target, rel_by_slug, rels)
+            if resolved:
+                inbound[resolved].append(rel)
     for rel, text in sorted(docs.items()):
         if rel in CONTROL or rel.startswith("indexes/"):
             for target in links(text):
-                if target not in known_control_targets:
+                if resolve(target, rel_by_slug, rels) is None:
                     findings.append(
                         finding(
                             "error",
@@ -415,7 +477,7 @@ def validate(root: Path, scope="private", policy_path=None):
                     )
     for page in pages:
         for target in page["links"]:
-            if target not in known:
+            if resolve(target, rel_by_slug, rels) is None:
                 findings.append(
                     finding(
                         "error",
@@ -436,7 +498,21 @@ def validate(root: Path, scope="private", policy_path=None):
                         target=target,
                     )
                 )
-        external = [src for src in inbound.get(page["slug"], []) if src != page["rel"]]
+        external = [src for src in inbound.get(page["rel"], []) if src != page["rel"]]
+        if partial:
+            # Inbound links live in page bodies the partial snapshot does not hold.
+            if "index.md" in docs and not any(
+                src == "index.md" or src.startswith("indexes/") for src in external
+            ):
+                findings.append(
+                    finding(
+                        "warning",
+                        "not-indexed",
+                        page["rel"],
+                        "page is absent from index links",
+                    )
+                )
+            continue
         if not external and page["kind"] != "repo-entity":
             findings.append(
                 finding(
@@ -469,6 +545,8 @@ def validate(root: Path, scope="private", policy_path=None):
         "scope": scope,
         "policy": str(policy_path) if policy_path else "default",
         "pages": len(pages),
+        "partial": partial,
+        "skipped": ["orphan"] + ([] if "index.md" in docs else ["not-indexed"]) if partial else [],
         "by_type": dict(sorted(counts.items(), key=lambda x: str(x[0]))),
         "errors": sum(x["level"] == "error" for x in findings),
         "warnings": sum(x["level"] == "warning" for x in findings),
@@ -482,9 +560,17 @@ def main():
     parser.add_argument("--scope", choices=("private", "shared"), default="private")
     parser.add_argument("--policy", type=Path)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--listing",
+        type=Path,
+        help="file listing every Markdown path of the wiki root; the snapshot may then "
+        "hold only the pages being changed",
+    )
+    parser.add_argument("--root-uri", help="URI prefix to strip from --listing entries")
     args = parser.parse_args()
     try:
-        report = validate(args.snapshot, args.scope, args.policy)
+        listing = read_listing(args.listing, args.root_uri) if args.listing else None
+        report = validate(args.snapshot, args.scope, args.policy, listing)
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -494,9 +580,12 @@ def main():
         print(
             f"pages={report['pages']} errors={report['errors']} warnings={report['warnings']}"
         )
+        if report["skipped"]:
+            print(f"partial snapshot; not checked: {', '.join(report['skipped'])}")
         for item in report["findings"]:
+            target = f" -> {item['target']}" if item.get("target") else ""
             print(
-                f"{item['level'].upper()} {item['code']} {item['path']}: {item['message']}"
+                f"{item['level'].upper()} {item['code']} {item['path']}: {item['message']}{target}"
             )
     return 1 if report["errors"] else 0
 

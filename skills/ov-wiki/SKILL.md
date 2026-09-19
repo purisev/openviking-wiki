@@ -38,6 +38,7 @@ Read only the reference needed for the current operation:
 - plan writes or recover an interrupted batch: [writes-and-recovery.md](references/writes-and-recovery.md)
 - reason about root boundaries or publication: [privacy.md](references/privacy.md)
 - map runtime capabilities and optional HTTP batching: [transport.md](references/transport.md)
+- tell the host's standing instructions where the wiki is: [agent-instructions.md](references/agent-instructions.md)
 
 ## Invariants
 

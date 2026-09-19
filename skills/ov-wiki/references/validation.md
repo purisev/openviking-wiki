@@ -18,6 +18,31 @@ Checks include page placement/type, required frontmatter, reduced `repo-entity` 
 slugs, duplicate slugs, broken body links, orphan pages, index coverage, missing source targets,
 fenced-code link exclusion, size caps, and forbidden private URIs in a shared snapshot.
 
+## How links resolve
+
+A wikilink names a page by slug. `[[slug|label]]`, `[[slug#heading]]` and `[[slug.md]]` all name
+`slug`; `[[#heading]]` points into its own page. A directory prefix is a constraint, not decoration:
+`[[entities/foo]]` resolves only if `entities/foo.md` exists, and never binds to `sources/foo.md`.
+Slugs are case-sensitive. A broken-link finding names the target it could not resolve.
+
+## Validating only what changes
+
+Do not export a whole root to check one operation. Put the final bodies of the pages being changed
+into a directory, list the root once, and pass the listing:
+
+```bash
+# listing.txt: the recursive output of the OpenViking list tool for the root, or one path per line
+uv run scripts/wiki_validate.py CHANGED_PAGES_DIR \
+  --listing listing.txt --root-uri viking://user/alice/resources/wiki
+```
+
+Links and `sources:` references then resolve against every page of the root, and a new page whose
+slug collides with a listed one is a duplicate, while only the changed bodies are read. A listed
+page's type is taken from its directory. The report says `partial` and names the checks it could not
+make: `orphan` always, because inbound links live in bodies it does not hold, and `not-indexed`
+unless the changed `index.md` is part of the directory. Run those two over a full snapshot as an
+occasional health check, not on every write.
+
 Structural lint reports findings; it does not rewrite pages. Semantic lint reads bounded pages and
 their evidence to find contradictions, stale claims, duplicates, and gaps. Proposed fixes remain
 separate until the user requested a corrective write.
