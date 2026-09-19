@@ -6,3 +6,5 @@ argument-hint: [private|shared]
 Use the `ov-wiki` skill's initialization and schema workflow. Treat `$ARGUMENTS` as the
 requested scope when supplied. Discover the registered OpenViking tools in this Claude Code session;
 do not assume a server prefix. Show the exact root and planned missing pages before any write.
+After a successful initialization, offer the stanza from the skill's agent-instructions reference
+for this host's standing instructions; add it only if the user agrees.

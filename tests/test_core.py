@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 import os
 import tempfile
@@ -300,6 +301,138 @@ class ValidatorTests(unittest.TestCase):
         ]
         self.assertEqual(repo_errors, [])
         self.assertEqual(legacy_errors, [])
+
+
+class LinkResolutionTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        write_snapshot(self.tmp)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def concept_with(self, link):
+        return CONCEPT.replace("See [[synthetic-source]].", f"See [[synthetic-source]] and {link}.")
+
+    def broken_targets(self, link):
+        write_snapshot(self.tmp, concept=self.concept_with(link))
+        report = wiki_validate.validate(self.tmp)
+        return [f["target"] for f in report["findings"] if f["code"] == "broken-link"]
+
+    def test_alias_anchor_suffix_and_exact_path_resolve(self):
+        for link in (
+            "[[legacy-repo|the legacy page]]",
+            "[[legacy-repo#history]]",
+            "[[legacy-repo.md]]",
+            "[[entities/legacy-repo]]",
+            "[[entities/legacy-repo#history|the legacy page]]",
+            "[[#a-heading-on-this-page]]",
+        ):
+            with self.subTest(link=link):
+                self.assertEqual(self.broken_targets(link), [])
+
+    def test_directory_prefix_is_a_constraint(self):
+        # legacy-repo lives under entities/, so the same slug under sources/ names nothing.
+        self.assertEqual(self.broken_targets("[[sources/legacy-repo]]"), ["sources/legacy-repo"])
+
+    def test_slugs_stay_case_sensitive(self):
+        self.assertEqual(self.broken_targets("[[Legacy-Repo]]"), ["Legacy-Repo"])
+
+    def test_path_qualified_link_counts_as_inbound(self):
+        index = self.tmp / "index.md"
+        index.write_text(index.read_text().replace("- [[legacy-repo]]\n", ""), encoding="utf-8")
+        write_snapshot_page = self.tmp / "concepts/sample-concept.md"
+        write_snapshot_page.write_text(self.concept_with("[[entities/legacy-repo]]"), encoding="utf-8")
+        report = wiki_validate.validate(self.tmp)
+        orphans = [f["path"] for f in report["findings"] if f["code"] == "orphan"]
+        self.assertNotIn("entities/legacy-repo.md", orphans)
+
+    def test_text_report_names_the_broken_target(self):
+        write_snapshot(self.tmp, concept=self.concept_with("[[no-such-page]]"))
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS / "wiki_validate.py"), str(self.tmp)],
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("broken-link concepts/sample-concept.md: wikilink target is missing -> no-such-page", result.stdout)
+
+
+class PartialSnapshotTests(unittest.TestCase):
+    """Only the pages being changed are present; the rest of the root is a listing."""
+
+    LISTING = {
+        "SCHEMA.md",
+        "index.md",
+        "log.md",
+        "sources/synthetic-source.md",
+        "concepts/sample-concept.md",
+        "entities/sample-repo.md",
+        "entities/legacy-repo.md",
+    }
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        (self.tmp / "concepts").mkdir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def write(self, rel, text):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+
+    def test_links_and_references_resolve_against_the_listing(self):
+        self.write("concepts/sample-concept.md", CONCEPT.replace("See [[synthetic-source]].", "See [[entities/legacy-repo]]."))
+        report = wiki_validate.validate(self.tmp, listing=self.LISTING)
+        self.assertEqual(report["errors"], 0, report["findings"])
+        self.assertTrue(report["partial"])
+
+    def test_checks_that_need_every_body_are_skipped_and_named(self):
+        self.write("concepts/sample-concept.md", CONCEPT)
+        report = wiki_validate.validate(self.tmp, listing=self.LISTING)
+        self.assertEqual(report["skipped"], ["orphan", "not-indexed"])
+        self.assertFalse([f for f in report["findings"] if f["code"] in {"orphan", "not-indexed"}])
+
+    def test_a_link_to_nothing_in_the_listing_is_still_broken(self):
+        self.write("concepts/sample-concept.md", CONCEPT.replace("See [[synthetic-source]].", "See [[gone]]."))
+        report = wiki_validate.validate(self.tmp, listing=self.LISTING)
+        self.assertEqual([f["target"] for f in report["findings"] if f["code"] == "broken-link"], ["gone"])
+
+    def test_a_reference_must_name_a_listed_page_of_the_right_type(self):
+        self.write("concepts/sample-concept.md", CONCEPT.replace("sources: [synthetic-source]", "sources: [legacy-repo]"))
+        report = wiki_validate.validate(self.tmp, listing=self.LISTING)
+        self.assertEqual([f["target"] for f in report["findings"] if f["code"] == "missing-reference"], ["legacy-repo"])
+
+    def test_a_new_page_colliding_with_a_listed_slug_is_a_duplicate(self):
+        self.write("concepts/legacy-repo.md", CONCEPT)
+        report = wiki_validate.validate(self.tmp, listing=self.LISTING)
+        self.assertIn("duplicate-slug", [f["code"] for f in report["findings"]])
+
+    def test_index_in_the_snapshot_brings_back_the_index_check(self):
+        self.write("concepts/new-idea.md", CONCEPT)
+        self.write("index.md", "# Wiki Index\n\n- [[sample-concept]]\n")
+        report = wiki_validate.validate(self.tmp, listing=self.LISTING | {"concepts/new-idea.md"})
+        self.assertEqual(report["skipped"], ["orphan"])
+        self.assertEqual([f["path"] for f in report["findings"] if f["code"] == "not-indexed"], ["concepts/new-idea.md"])
+
+    def test_listing_accepts_list_tool_output_and_plain_paths(self):
+        listing = self.tmp.parent / f"{self.tmp.name}.listing"
+        listing.write_text(
+            "[dir] viking://user/alice/resources/wiki/concepts\n"
+            "[file] viking://user/alice/resources/wiki/concepts/sample-concept.md\n"
+            "viking://user/alice/resources/wiki/index.md\n"
+            "./sources/synthetic-source.md\n"
+            "entities/notes.txt\n",
+            encoding="utf-8",
+        )
+        try:
+            rels = wiki_validate.read_listing(listing, "viking://user/alice/resources/wiki")
+            self.assertEqual(rels, {"concepts/sample-concept.md", "index.md", "sources/synthetic-source.md"})
+            with self.assertRaisesRegex(ValueError, "outside the root"):
+                wiki_validate.read_listing(listing, "viking://resources/wiki")
+        finally:
+            listing.unlink()
 
 
 class PlannerTests(unittest.TestCase):
