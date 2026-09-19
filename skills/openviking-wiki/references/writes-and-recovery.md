@@ -18,7 +18,8 @@ OpenViking batch preflight/tree locking does not make the write transactional. T
 hash/CAS field. A batch can partially write, and refresh may fail after content was saved. Operate as
 a single writer per root until the server offers a concurrency primitive.
 
-The helper creates or evaluates a plan; it never calls OpenViking:
+The helper creates or evaluates a plan; it never calls OpenViking. It needs the same local tooling as
+the validator (see `validation.md`); `uv run scripts/wiki_plan.py ...` works wherever `uv` is installed:
 
 ```bash
 python scripts/wiki_plan.py plan CURRENT DESIRED \

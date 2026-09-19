@@ -15,17 +15,25 @@ This repository contains mechanics only. It does not contain or migrate a real w
 
 ## Install
 
-The plugin registers no OpenViking tools of its own. The session must already expose OpenViking's
-read, search and write tools — for example through the MCP proxy of the
-[openviking-memory](https://github.com/purisev/openviking-memory) plugin. Without them the commands
-stop and name the missing capability.
+The plugin registers no OpenViking tools of its own. The session must expose OpenViking's read, search
+and write tools; under Claude Code the [openviking-memory](https://github.com/purisev/openviking-memory)
+dependency provides them. Without them the commands stop and name the missing capability.
 
-Claude Code — the repository root is a marketplace whose single plugin is the repository itself:
+The deterministic helpers (`wiki_validate.py`, `wiki_plan.py`) need Python 3 with PyYAML 6.0.3;
+`uv run` resolves it from the scripts' PEP 723 headers. They are optional: the agent can run the same
+checks over MCP.
+
+Claude Code — the plugin is published in the `purisev` marketplace
+([purisev/agent-plugins](https://github.com/purisev/agent-plugins)):
 
 ```
-/plugin marketplace add purisev/openviking-wiki
-/plugin install openviking-wiki@openviking-wiki
+/plugin marketplace add purisev/agent-plugins
+/plugin install openviking-wiki@purisev
 ```
+
+The manifest declares `openviking-memory` as a dependency, so Claude Code installs and enables it from
+the same marketplace; that plugin's MCP proxy supplies the OpenViking tools and asks for the server
+connection when it is enabled.
 
 This adds the `openviking-wiki` skill and the `/wiki-init`, `/wiki-ingest`, `/wiki-query`,
 `/wiki-lint` and `/wiki-recover` commands. From a checkout, use `claude --plugin-dir <checkout>` for
