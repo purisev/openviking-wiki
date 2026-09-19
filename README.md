@@ -13,6 +13,27 @@ Supported roots are `viking://resources/wiki` for explicitly shared work and
 
 This repository contains mechanics only. It does not contain or migrate a real wiki.
 
+## Install
+
+The plugin registers no OpenViking tools of its own. The session must already expose OpenViking's
+read, search and write tools — for example through the MCP proxy of the
+[openviking-memory](https://github.com/purisev/openviking-memory) plugin. Without them the commands
+stop and name the missing capability.
+
+Claude Code — the repository root is a marketplace whose single plugin is the repository itself:
+
+```
+/plugin marketplace add purisev/openviking-wiki
+/plugin install openviking-wiki@openviking-wiki
+```
+
+This adds the `openviking-wiki` skill and the `/wiki-init`, `/wiki-ingest`, `/wiki-query`,
+`/wiki-lint` and `/wiki-recover` commands. From a checkout, use `claude --plugin-dir <checkout>` for
+one session.
+
+Codex reads `.codex-plugin/plugin.json`; add the checkout to a Codex marketplace and install
+`openviking-wiki` from it.
+
 ## Development checks
 
 ```bash

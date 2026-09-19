@@ -480,15 +480,12 @@ class PackagingTests(unittest.TestCase):
             self.assertIn("openviking-wiki", text)
             self.assertNotIn("mcp__openviking", text)
 
-    def test_codex_and_claude_manifests_share_skill(self):
-        codex = json.loads((ROOT / ".codex-plugin/plugin.json").read_text())
+    def test_claude_marketplace_installs_the_plugin_from_the_repository_root(self):
+        marketplace = json.loads((ROOT / ".claude-plugin/marketplace.json").read_text())
         claude = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())
-        self.assertEqual(codex["name"], ROOT.name)
-        self.assertEqual(claude["name"], ROOT.name)
-        self.assertEqual(codex["version"], claude["version"])
-        self.assertEqual(codex["skills"], "./skills/")
-        self.assertEqual(claude["skills"], "./skills/")
-        self.assertTrue((ROOT / "skills/openviking-wiki/SKILL.md").is_file())
+        entries = [p for p in marketplace["plugins"] if p["name"] == claude["name"]]
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["source"], "./")
 
     def test_no_bundled_mcp_or_hooks(self):
         self.assertFalse((ROOT / ".mcp.json").exists())
