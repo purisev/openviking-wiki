@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "openviking-wiki",
+  "description": "Maintain an LLM-authored Markdown wiki in OpenViking storage.",
+  "owner": {
+    "name": "purisev",
+    "url": "https://github.com/purisev"
+  },
+  "plugins": [
+    {
+      "name": "openviking-wiki",
+      "description": "Maintain an LLM-authored Markdown wiki in OpenViking storage.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

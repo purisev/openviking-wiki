@@ -1,10 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "openviking-wiki",
-  "version": "0.1.0+codex.20260910063325",
+  "version": "0.1.0",
   "description": "Maintain an LLM-authored Markdown wiki in OpenViking storage.",
   "author": {
-    "name": "Local developer"
+    "name": "purisev",
+    "url": "https://github.com/purisev"
   },
   "license": "MIT",
   "keywords": [
@@ -12,5 +13,6 @@
     "wiki",
     "knowledge-base"
   ],
-  "skills": "./skills/"
+  "skills": "./skills/",
+  "repository": "https://github.com/purisev/openviking-wiki"
 }
